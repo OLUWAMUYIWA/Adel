@@ -21,7 +21,7 @@ import (
 
 
 
-var mySigningKey = []byte("984fv873rfnvfo9u34rb34340b5geor08343otf89wfbw4893")
+var mySigningKey = []byte("984fv873rfnvfo9u34rb34340b5geor08343otf89wfb")
 
 // type Connection struct {
 // 	Seniors		*mongo.Collection
@@ -32,10 +32,7 @@ var mySigningKey = []byte("984fv873rfnvfo9u34rb34340b5geor08343otf89wfbw4893")
 
 func main() {
 	// MongooDB connection
-	//local connection: mongodb://127.0.0.1:27017
-	//remote connection: mongodb+srv://user_adeolu:ade1234l@cluster0.lso8y.mongodb.net/drugstore?retryWrites=true&w=majority
-
-	JavascriptISOString := "2006-01-02T15:04:05.999Z07:00"
+        JavascriptISOString := "2006-01-02T15:04:05.999Z07:00"
 	time.Now().UTC().Format(JavascriptISOString)
 	var ctx, _  = context.WithTimeout(context.Background(), 200 * time.Second)
 	clientOptions := options.Client().ApplyURI("mongodb://127.0.0.1:27017")
