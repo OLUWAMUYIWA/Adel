@@ -4,11 +4,9 @@ import (
 	"log"
 	"net/http"
 	"time"
-
+	"os"
 	"github.com/OLUWAMUYIWA/Adel/api"
-	//jwtmiddleware "github.com/auth0/go-jwt-middleware"
 	"github.com/codegangsta/negroni"
-	//"github.com/gorilla/handlers"
 	//"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"go.mongodb.org/mongo-driver/bson"
@@ -18,27 +16,22 @@ import (
 	"go.mongodb.org/mongo-driver/x/bsonx"
 )
 
+var sec = os.Getenv("secret")
 
+// var Signature = []byte(sec)
+// var sec = 984fv873rfnvfo9u34rb34340b5geor08343otf89wfbw4893
+var mySigningKey = []byte(sec)
 
-
-var mySigningKey = []byte("984fv873rfnvfo9u34rb34340b5geor08343otf89wfbw4893")
-
-// type Connection struct {
-// 	Seniors		*mongo.Collection
-// 	Juniors		*mongo.Collection
-// 	Drugs		*mongo.Collection
-// }
 
 
 func main() {
 	// MongooDB connection
-	//local connection: mongodb://127.0.0.1:27017
-	//remote connection: mongodb+srv://user_adeolu:ade1234l@cluster0.lso8y.mongodb.net/drugstore?retryWrites=true&w=majority
 
-	JavascriptISOString := "2006-01-02T15:04:05.999Z07:00"
-	time.Now().UTC().Format(JavascriptISOString)
-	var ctx, _  = context.WithTimeout(context.Background(), 200 * time.Second)
-	clientOptions := options.Client().ApplyURI("mongodb://127.0.0.1:27017")
+	var connStr = os.Getenv("dbconn")
+	var ctx, _  = context.WithTimeout(context.Background(), 10 * time.Second)
+	// clientOptions := options.Client().ApplyURI("mongodb://127.0.0.1:27017")
+	// var connStr = "mongodb+srv://adel:l7hbnRiL7BEr1bck@drugs.u6k4q.mongodb.net/drugs?retryWrites=true&w=majority"
+	clientOptions := options.Client().ApplyURI(connStr)
 	
 	client, err := mongo.Connect(ctx, clientOptions)
     if err != nil {
@@ -110,103 +103,111 @@ func main() {
 	res, err := collJuniors.Indexes().CreateMany(context.Background(), indexes, opts)
 	log.Print(res)
 	r := mux.NewRouter().StrictSlash(false)
+	
 	s := r.PathPrefix("/api").Subrouter()
 	//r.Host("www.example.com")
 
 	noAuth := s.PathPrefix("/no_auth").Subrouter()
-	noAuth.Path("/regJunior").HandlerFunc(api.CreateJunior(ctx, dBase)).Methods("POST")
-	noAuth.Path("/regSenior").HandlerFunc(api.CreateSenior(ctx, dBase)).Methods("POST")
-	noAuth.Path("/login").HandlerFunc(api.LoginHandler(ctx, dBase)).Methods("POST")
-	noAuth.Path("/regBoss").HandlerFunc(api.CreateBosss(ctx, dBase)).Methods("POST")
+	noAuth.Path("/regJunior").HandlerFunc(api.CreateJunior( dBase)).Methods("POST", "OPTIONS")
+	noAuth.Path("/regSenior").HandlerFunc(api.CreateSenior(dBase)).Methods("POST", "OPTIONS")
+	noAuth.Path("/login").HandlerFunc(api.LoginHandler(dBase)).Methods("POST", "OPTIONS")
+	noAuth.Path("/regBoss").HandlerFunc(api.CreateBosss(dBase)).Methods("POST", "OPTIONS")
 
 	s.Handle("/search/{name}", negroni.New(
 		negroni.NewRecovery(),
 		negroni.HandlerFunc(api.AuthorizeWareAll),
 		negroni.NewLogger(),
-		negroni.Wrap(http.HandlerFunc(api.Search(ctx, dBase))),
-	)).Methods("GET")
+		negroni.Wrap(http.HandlerFunc(api.Search(dBase))),
+	)).Methods("GET", "OPTIONS")
 	
 	s.Handle("/junUpdate/{uid}", negroni.New(
 		negroni.NewRecovery(),
 		negroni.HandlerFunc(api.AuthorizeWareJunior),
 		negroni.NewLogger(),
-		negroni.Wrap(http.HandlerFunc(api.UpdateJunior(ctx, dBase))),
-	)).Methods("PUT")
+		negroni.Wrap(http.HandlerFunc(api.UpdateJunior(dBase))),
+	)).Methods("PUT", "OPTIONS")
 
 	
-	s.Handle("/uploadManyDrugs/{uid}", negroni.New(
+	s.Handle("/uploadManyDrugs/{uid}/{cname}/{cphone}", negroni.New(
 		negroni.NewRecovery(),
 		negroni.HandlerFunc(api.AuthorizeWareSenior),
 		negroni.NewLogger(),
-		negroni.Wrap(http.HandlerFunc(api.UploadMany(ctx, dBase))),
-	)).Methods("POST")
+		negroni.Wrap(http.HandlerFunc(api.UploadMany(dBase))),
+	)).Methods("POST", "OPTIONS")
 
-	s.Handle("/uploadDrug/{uid}", negroni.New(
+	s.Handle("/uploadDrug/{uid}/{cname}/{cphone}", negroni.New(
 		negroni.NewRecovery(),
 		negroni.HandlerFunc(api.AuthorizeWareSenior),
 		negroni.NewLogger(),
-		negroni.Wrap(http.HandlerFunc(api.Upload(ctx, dBase))),
-	)).Methods("POST")
+		negroni.Wrap(http.HandlerFunc(api.Upload( dBase))),
+	)).Methods("POST", "OPTIONS")
 
-	s.Handle(("/sendMyDrugs/{uid}"),
+	s.Handle(("/sendMyDrugs/{uid}/{cname}"),
 		negroni.New(
 			negroni.NewRecovery(),
 			negroni.HandlerFunc(api.AuthorizeWareSenior),
 			negroni.NewLogger(),
-			negroni.Wrap(http.HandlerFunc(api.SendMyDrugs(ctx, dBase))) ,
-		)).Methods("GET")
+			negroni.Wrap(http.HandlerFunc(api.SendMyDrugs(dBase))) ,
+		)).Methods("GET", "OPTIONS")
 		
-	s.Handle("/updateMyDrugs/{uid}", 
+	s.Handle("/updateMyDrugs/{uid}/{cname}", 
 		negroni.New(
 			negroni.NewRecovery(),
 			negroni.HandlerFunc(api.AuthorizeWareSenior),
 			negroni.NewLogger(),
-			negroni.Wrap(http.HandlerFunc(api.UpdateMyDrugs(ctx, dBase))),
-		)).Methods("PUT")
+			negroni.Wrap(http.HandlerFunc(api.UpdateMyDrugs(dBase))),
+		)).Methods("PUT", "OPTIONS")
 
-	s.Handle("/updateSenior/{uid}", negroni.New(
+	s.Handle("/updateSenior/{uid}/{cname}", negroni.New(
 		negroni.NewRecovery(),
 		negroni.HandlerFunc(api.AuthorizeWareSenior),
 		negroni.NewLogger(),
-		negroni.Wrap(http.HandlerFunc(api.UpdateSenior(ctx, dBase))),
-	)).Methods("PUT")
+		negroni.Wrap(http.HandlerFunc(api.UpdateSenior(dBase))),
+	)).Methods("PUT", "OPTIONS")
 	
-	s.Handle("/deleteDrug/{uid}/{id}", negroni.New(
+	s.Handle("/deleteDrug/{uid}/{id}/{cname}", negroni.New(
 		negroni.NewRecovery(),
 		negroni.HandlerFunc(api.AuthorizeWareSenior),
 		negroni.NewLogger(),
-		negroni.Wrap(http.HandlerFunc(api.DeleteDrug(ctx, dBase))),
-	)).Methods("DELETE")
+		negroni.Wrap(http.HandlerFunc(api.DeleteDrug(dBase))),
+	)).Methods("DELETE", "OPTIONS")
+
+	
 
 	s.Handle("/sendUnverifiedJuniors", negroni.New(
 		negroni.NewRecovery(),
 		negroni.HandlerFunc(api.AuthorizeWareBoss),
 		negroni.NewLogger(),
-		negroni.Wrap(http.HandlerFunc(api.SendUnverifiedJuniors(ctx, dBase))),
-	)).Methods("GET")
+		negroni.Wrap(http.HandlerFunc(api.SendUnverifiedJuniors(dBase))),
+	)).Methods("GET", "OPTIONS")
 	
 	s.Handle("/sendUnverifiedSeniors", negroni.New(
 		negroni.NewRecovery(),
 		negroni.HandlerFunc(api.AuthorizeWareBoss),
 		negroni.NewLogger(),
-		negroni.Wrap(http.HandlerFunc(api.SendUnverifiedSeniors(ctx, dBase))),
-	)).Methods("GET")
+		negroni.Wrap(http.HandlerFunc(api.SendUnverifiedSeniors(dBase))),
+	)).Methods("GET", "OPTIONS")
 	
 	s.Handle("/verifyManyJuniors", negroni.New(
 		negroni.NewRecovery(),
 		negroni.HandlerFunc(api.AuthorizeWareBoss),
 		negroni.NewLogger(),
-		negroni.Wrap(http.HandlerFunc(api.VerifyManyJuniors(ctx, dBase))),
-	)).Methods("PUT")
+		negroni.Wrap(http.HandlerFunc(api.VerifyManyJuniors(dBase))),
+	)).Methods("PUT", "OPTIONS")
 
 	s.Handle("/verifyManySeniors", negroni.New(
 		negroni.NewRecovery(),
 		negroni.HandlerFunc(api.AuthorizeWareBoss),
 		negroni.NewLogger(),
-		negroni.Wrap(http.HandlerFunc(api.VerifyManySeniors(ctx, dBase))),
-	)).Methods("PUT")
+		negroni.Wrap(http.HandlerFunc(api.VerifyManySeniors(dBase))),
+	)).Methods("PUT", "OPTIONS")
 
-	http.ListenAndServe(":3000", r)
+	fs := http.FileServer(http.Dir("./clientdist"))
+	r.Handle("/", fs)
+
+	// http.ListenAndServe(":3000", r)
+	port := os.Getenv("port")
+	http.ListenAndServe(":"+port, r)
 	//http.ListenAndServe(":3000", handlers.CORS(handlers.AllowedMethods([]string{"GET", "POST", "PUT", "HEAD", "OPTIONS"}), handlers.AllowedOrigins([]string{"*"}))(r))
 
 }

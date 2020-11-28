@@ -1,12 +1,14 @@
 package api
 
-
-import(
+import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
+	"io/ioutil"
 	"log"
 	"net/http"
+	"path"
 	"strings"
 	"time"
 
@@ -24,11 +26,15 @@ const (
 	db string = "drugstore"
 )
 
-
+func setupResponse(w *http.ResponseWriter, req *http.Request) {
+	(*w).Header().Set("Access-Control-Allow-Origin", "*")
+    (*w).Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
+    (*w).Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization")
+}
 //ResponseWithJSON is used in most handlers
 func ResponseWithJSON(w http.ResponseWriter, json []byte, code int) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	w.WriteHeader(code)
+	//w.WriteHeader(code)
 	w.Write(json)
 }
 
@@ -40,12 +46,47 @@ func ErrorWithJSON(w http.ResponseWriter, message Message, code int) {
 }
 
 
+//Up handles the drug picture upload
+func Up(w http.ResponseWriter, r *http.Request) {
+
+	drugId := r.FormValue("drugId")
+
+	file, header, err := r.FormFile("	")
+	defer file.Close()
+	if err != nil {
+		io.WriteString(w, err.Error())
+		return
+	}
+	data, err := ioutil.ReadAll(file)
+	if err != nil {
+		io.WriteString(w, err.Error())
+		return
+	}
+
+	filename := path.Join("uploads", drugId + path.Ext(header.Filename))
+	err = ioutil.WriteFile(filename, data, 0777)
+	if err != nil {
+	io.WriteString(w, err.Error())
+	return
+	}
+	io.WriteString(w, "Successful")
+	
+} 
+
+
 //Upload caters to the upload of drugs
-func Upload(ctx context.Context, base *mongo.Database) func(w http.ResponseWriter, r *http.Request) {
+func Upload(base *mongo.Database) func(w http.ResponseWriter, r *http.Request) {
 	return func (w http.ResponseWriter, r *http.Request)  {
+		setupResponse(&w, r)
+		if (*r).Method == "OPTIONS" {
+			return
+		}
+
 		w.Header().Add("Content-Type", "application/json")
 		vars := mux.Vars(r)
 		uploaderID := vars["uid"]
+		cname := vars["cname"]
+		cphone := vars["cphone"]
 		var drug data.Drug
 		err := json.NewDecoder(r.Body).Decode(&drug)
 		if err != nil {
@@ -54,44 +95,50 @@ func Upload(ctx context.Context, base *mongo.Database) func(w http.ResponseWrite
 		}
 		uId, err := primitive.ObjectIDFromHex(uploaderID)
 		drug.UploaderID = uId
+		drug.CompPhone = cphone
 		drug.Name = strings.ToLower(drug.Name)
 		drug.TimeUploaded = time.Now()
 		drug.ExpiryDate = drug.TimeUploaded.AddDate(0, drug.ExpiryMonth, 0)
 
-		uFilter := bson.M{"_id": uId}
-		uColl := base.Collection("seniors")
-		curs := uColl.FindOne(ctx, uFilter)
-		var sen data.Senior
-		err = curs.Decode(&sen)
-		if err != nil {
-			log.Print(err)
-		}
+		// uFilter := bson.M{"_id": uId}
+		// uColl := base.Collection("seniors")
+		// curs := uColl.FindOne(ctx, uFilter)
+		// var sen data.Senior
+		// err = curs.Decode(&sen)
+		// if err != nil {
+		// 	log.Print(err)
+		// }
 
-		drug.CompanyName = sen.CompanyName
+		drug.CompanyName = cname
 
 		drugsColl := base.Collection("drugs")
 
-		
+		var ctx, _  = context.WithTimeout(context.Background(), 10 * time.Second)
 		_, err = drugsColl.InsertOne(ctx, drug)
 		if err != nil {
 			ErrorWithJSON(w, Message{"Database error"}, http.StatusInternalServerError)
 			log.Print(err)
 			return
 		}
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
+		//w.Header().Set("Content-Type", "application/json")
+		//w.WriteHeader(http.StatusOK)
 		jsonRes, err := json.Marshal(Message{"Drug uploaded"})
 		w.Write([]byte(jsonRes))
 
 	}
 
 }
-func UploadMany(ctx context.Context, base *mongo.Database) func(w http.ResponseWriter, r *http.Request) {
+func UploadMany(base *mongo.Database) func(w http.ResponseWriter, r *http.Request) {
 	return func (w http.ResponseWriter, r *http.Request)  {
+		setupResponse(&w, r)
+		if (*r).Method == "OPTIONS" {
+			return
+		}
 		w.Header().Add("Content-Type", "application/json")
-		log.Printf("got here")
 		vars := mux.Vars(r)
 		uploaderID := vars["uid"]
+		cname := vars["cname"]
+		cphone := vars["cphone"]
 		var drugs []data.Drug
 		err := json.NewDecoder(r.Body).Decode(&drugs)
 		if err != nil {
@@ -100,21 +147,21 @@ func UploadMany(ctx context.Context, base *mongo.Database) func(w http.ResponseW
 			return
 		}
 		upId, err := primitive.ObjectIDFromHex(uploaderID)
-		uFilter := bson.M{"_id": upId}
-		uColl := base.Collection("seniors")
-		curs := uColl.FindOne(ctx, uFilter)
-		var sen data.Senior
-		err = curs.Decode(&sen)
+		// uFilter := bson.M{"_id": upId}
+		// uColl := base.Collection("seniors")
+		// curs := uColl.FindOne(ctx, uFilter)
+		// var sen data.Senior
+		// err = curs.Decode(&sen)
 
 
 		//j := data.Drug{}
 		drugsMany := []interface{}{}
 		for _, j := range drugs {
 			j.Name = strings.ToLower(j.Name)
-			log.Print("we entered this loop")
 			j.UploaderID= upId
 			j.TimeUploaded = time.Now()
-			j.CompanyName = sen.CompanyName
+			j.CompanyName = cname
+			j.CompPhone = cphone
 			j.Id = primitive.NewObjectID()
 			j.ExpiryDate = j.TimeUploaded.AddDate(0, j.ExpiryMonth, 0)
 			drugsMany = append(drugsMany, j)
@@ -128,14 +175,15 @@ func UploadMany(ctx context.Context, base *mongo.Database) func(w http.ResponseW
 
 		
 		drugsColl := base.Collection("drugs")
+		var ctx, _  = context.WithTimeout(context.Background(), 10 * time.Second)
 		result, err := drugsColl.InsertMany(ctx, drugsMany)
 		if err != nil {
 			ErrorWithJSON(w, Message{"Database error"}, http.StatusInternalServerError)
 			log.Print(err)
 			return
 		}
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
+		//w.Header().Set("Content-Type", "application/json")
+		//w.WriteHeader(http.StatusOK)
 		jsonRes, err := json.Marshal(result.InsertedIDs)
 		w.Write([]byte(jsonRes))
 
@@ -143,8 +191,12 @@ func UploadMany(ctx context.Context, base *mongo.Database) func(w http.ResponseW
 }
 
 //Update updates a drug
-func Update (ctx context.Context, base *mongo.Database) func(w http.ResponseWriter, r *http.Request) {
+func Update (base *mongo.Database) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
+		setupResponse(&w, r)
+		if (*r).Method == "OPTIONS" {
+			return
+		}
 		w.Header().Add("Content-Type", "application/json")
 		vars := mux.Vars(r)
 		idHex := vars["id"]
@@ -157,6 +209,7 @@ func Update (ctx context.Context, base *mongo.Database) func(w http.ResponseWrit
 		}
 		drug.Name = strings.ToLower(drug.Name)
 		coll := base.Collection("drugs")
+		var ctx, _  = context.WithTimeout(context.Background(), 10 * time.Second)
 		result, err := coll.ReplaceOne(
 			ctx,
 			bson.M{"_id": id},
@@ -172,15 +225,19 @@ func Update (ctx context.Context, base *mongo.Database) func(w http.ResponseWrit
 				return
 		}
 
-		w.WriteHeader(http.StatusOK)
+		//w.WriteHeader(http.StatusOK)
 		jsonRes, _ := json.Marshal(result.UpsertedCount)
 		ResponseWithJSON(w, jsonRes, http.StatusOK)
 	}
 	
 	}
 }
-func SendMyDrugs(ctx context.Context, base *mongo.Database) func (w http.ResponseWriter, r *http.Request) {
+func SendMyDrugs(base *mongo.Database) func (w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
+		setupResponse(&w, r)
+		if (*r).Method == "OPTIONS" {
+			return
+		}
 		w.Header().Add("Content-Type", "application/json")
 		vars := mux.Vars(r)
 		uId := vars["uid"]
@@ -194,6 +251,7 @@ func SendMyDrugs(ctx context.Context, base *mongo.Database) func (w http.Respons
 			"uploader_id", bson.D{{"$eq", id}},
 		}}
 		drugColl := base.Collection("drugs")
+		var ctx, _  = context.WithTimeout(context.Background(), 10 * time.Second)
 		cursor, err := drugColl.Find(ctx, filter, opts)
 
 		if err != nil {
@@ -215,8 +273,12 @@ func SendMyDrugs(ctx context.Context, base *mongo.Database) func (w http.Respons
 	}
 }
 
-func UpdateMyDrugs(ctx context.Context, base *mongo.Database) func (w http.ResponseWriter, r *http.Request) {
+func UpdateMyDrugs(base *mongo.Database) func (w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
+		setupResponse(&w, r)
+		if (*r).Method == "OPTIONS" {
+			return
+		}
 		w.Header().Add("Content-Type", "application/json")
 		idStr := mux.Vars(r)["uid"]
 		uId, err := primitive.ObjectIDFromHex(idStr)
@@ -230,12 +292,14 @@ func UpdateMyDrugs(ctx context.Context, base *mongo.Database) func (w http.Respo
 			 ErrorWithJSON(w, Message{"Bad drug fields"}, http.StatusBadRequest)
 		 }
 		 coll := base.Collection("drugs")
+		 var ctx, _  = context.WithTimeout(context.Background(), 10 * time.Second)
 		 for _, drug := range drugs {
 			 //dIdStr := drug.Id
 			 //dId, _ := primitive.ObjectIDFromHex(dIdStr)
 			 drug.TimeUpdated  =time.Now()
 			 drug.UploaderID = uId
 			 drug.Name = strings.ToLower(drug.Name)
+			 
 			_, err := coll.UpdateOne(
 				ctx,
 				bson.M{"_id": drug.Id},
@@ -255,8 +319,13 @@ func UpdateMyDrugs(ctx context.Context, base *mongo.Database) func (w http.Respo
 }
 
 //Search returns a list of drugs tet have a particular name
-func Search(ctx context.Context, base *mongo.Database) func(w http.ResponseWriter, r *http.Request) {
+func Search(base *mongo.Database) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
+		setupResponse(&w, r)
+		if (*r).Method == "OPTIONS" {
+			return
+		}
+
 		w.Header().Add("Content-Type", "application/json")
 		opt := options.Find()
 		opt.SetSort(bson.D{{"time_uploaded", -1}})
@@ -265,7 +334,13 @@ func Search(ctx context.Context, base *mongo.Database) func(w http.ResponseWrite
 		name := vars["name"]
 		name = strings.ToLower(name)
 		coll := base.Collection("drugs")
-		filterCursor, err := coll.Find(ctx, bson.D{{"name",bson.D{{"$eq", name}}}}, opt)
+		var ctx, _  = context.WithTimeout(context.Background(), 10 * time.Second)
+		f := bson.D{{"$and", []bson.D{
+			bson.D{{"name", bson.D{{"$eq", name}}}},
+			bson.D{{"quantity_available", bson.D{{"$gt", 0}}}},
+		}}}
+		// filterCursor, err := coll.Find(ctx, bson.D{{"name",bson.D{{"$eq", name}}}}, opt)
+		filterCursor, err := coll.Find(ctx, f, opt)
 		drugs := []data.Drug {}
 		if err != nil {
 			ErrorWithJSON(w, Message{"no result"}, http.StatusNotFound)
@@ -323,13 +398,18 @@ func Search(ctx context.Context, base *mongo.Database) func(w http.ResponseWrite
 			log.Fatal(err)
 		}
 		ResponseWithJSON(w, resp, http.StatusOK)
+		
 	}	
 	
 }
 
 //ReturnThisDrug returns a drug with given id
-func ReturnThisDrug(ctx context.Context, base *mongo.Database) func(w http.ResponseWriter, r *http.Request) {
+func ReturnThisDrug(base *mongo.Database) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
+		setupResponse(&w, r)
+		if (*r).Method == "OPTIONS" {
+			return
+		}
 		w.Header().Add("Content-Type", "application/json")
 		vars := mux.Vars(r)
 		idStr := vars["id"]
@@ -337,6 +417,7 @@ func ReturnThisDrug(ctx context.Context, base *mongo.Database) func(w http.Respo
 
 		var drug data.Drug
 		coll := base.Collection("drugs")
+		var ctx, _  = context.WithTimeout(context.Background(), 10 * time.Second)
 		err := coll.FindOne(ctx, bson.M{"_id": id}).Decode(&drug)
 		if err != nil {
 			ErrorWithJSON(w, Message{"error while looking for id"}, http.StatusInternalServerError)
@@ -350,14 +431,19 @@ func ReturnThisDrug(ctx context.Context, base *mongo.Database) func(w http.Respo
 }
 
 //DeleteDrug deletes a drug from the database
-func DeleteDrug(ctx context.Context, base *mongo.Database) func(w http.ResponseWriter, r *http.Request) {
+func DeleteDrug(base *mongo.Database) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
+		setupResponse(&w, r)
+		if (*r).Method == "OPTIONS" {
+			return
+		}
 		w.Header().Add("Content-Type", "application/json")
 		vars := mux.Vars(r)
 		idStr := vars["id"]
 		dIdHex := vars["uid"]
 		collSen := base.Collection("seniors")
 		dId, _ := primitive.ObjectIDFromHex(dIdHex)
+		var ctx, _  = context.WithTimeout(context.Background(), 10 * time.Second)
 		var user data.Senior
 		err := collSen.FindOne(ctx, bson.M{"_id": dId}).Decode(&user)
 		if err != nil {
@@ -374,7 +460,7 @@ func DeleteDrug(ctx context.Context, base *mongo.Database) func(w http.ResponseW
 			}
 
 		resp := res.DeletedCount
-		w.WriteHeader(http.StatusOK)
+		//w.WriteHeader(http.StatusOK)
 		jResp, _ := json.Marshal(resp)
 		w.Write(jResp)
 	}

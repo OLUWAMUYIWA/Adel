@@ -29,8 +29,13 @@ type Message struct {
 
 
 //CreateJunior creates a junior
-func CreateJunior(ctx context.Context, base *mongo.Database) func(w http.ResponseWriter, r *http.Request) {
+func CreateJunior(base *mongo.Database) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
+		setupResponse(&w, r)
+		if (*r).Method == "OPTIONS" {
+			return
+		}
+		//w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.Header().Add("Content-Type", "application/json")
 		var junior data.Junior
 		err := json.NewDecoder(r.Body).Decode(&junior)
@@ -40,35 +45,40 @@ func CreateJunior(ctx context.Context, base *mongo.Database) func(w http.Respons
 		coll := base.Collection("juniors")
 		junior.Email = strings.ToLower(junior.Email)
 		filter := bson.M{"email": junior.Email}
+		var ctx, _  = context.WithTimeout(context.Background(), 10 * time.Second)
 		no, err := coll.CountDocuments(ctx, filter)
 		if no > 0 {
 			w.WriteHeader(http.StatusUnauthorized)
 			ErrorWithJSON(w, Message{"You have registered before"}, http.StatusUnauthorized)
 			return
 		}
-		log.Print(junior.PracticeArea)
 		junior.Role = "junior"
 		junior.Verified = false
 		junior.TimeRegd = time.Now()
 		//junior.Email = "junior" + junior.Email
 		junior.Id = primitive.NewObjectID()
+		fmt.Printf("jun: %v", junior)
 		_, err = coll.InsertOne(ctx, junior)
 		if err != nil {
 			ErrorWithJSON(w, Message{err.Error()}, http.StatusInternalServerError)
 			log.Println("Failed create junior ", err)
 			return
 		}
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
+		//w.Header().Set("Content-Type", "application/json")
 		m := Message{"Created Successfully"}
 		response, err := json.Marshal(m)
 		w.Write([]byte(response))
+		
 	}
 }
 
 //CreateSenior creates a senior
-func CreateSenior(ctx context.Context, base *mongo.Database) func(w http.ResponseWriter, r *http.Request) {
+func CreateSenior(base *mongo.Database) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
+		setupResponse(&w, r)
+		if (*r).Method == "OPTIONS" {
+			return
+		}
 		w.Header().Add("Content-Type", "application/json")
 		var senior data.Senior
 		err := json.NewDecoder(r.Body).Decode(&senior)
@@ -81,6 +91,7 @@ func CreateSenior(ctx context.Context, base *mongo.Database) func(w http.Respons
 		senior.Email = strings.ToLower(senior.Email)
 		senior.Role = "senior"
 		filter := bson.M{"email": senior.Email}
+		var ctx, _  = context.WithTimeout(context.Background(), 10 * time.Second)
 		no, err := coll.CountDocuments(ctx, filter)
 		if no > 0 {
 			w.WriteHeader(http.StatusUnauthorized)
@@ -90,22 +101,26 @@ func CreateSenior(ctx context.Context, base *mongo.Database) func(w http.Respons
 		senior.Verified = false
 		senior.TimeRegd = time.Now()
 		senior.Id= primitive.NewObjectID()
-
+		
 		_ , err = coll.InsertOne(ctx, senior)
 		if err != nil {
 			ErrorWithJSON(w, Message{"Database error"}, http.StatusInternalServerError)
 			log.Println("Failed create senior ", err)
 			return
 		}
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
+		//w.Header().Set("Content-Type", "application/json")
+		//w.WriteHeader(http.StatusOK)
 		m := Message{"Created Successfully"}
 		response, err := json.Marshal(m)
 		w.Write([]byte(response))
 	}
 }
-func CreateBosss(ctx context.Context, base *mongo.Database) func(w http.ResponseWriter, r *http.Request) {
+func CreateBosss(base *mongo.Database) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
+		setupResponse(&w, r)
+		if (*r).Method == "OPTIONS" {
+			return
+		}
 		var boss data.Boss
 		err := json.NewDecoder(r.Body).Decode(&boss)
 		if err != nil {
@@ -114,16 +129,18 @@ func CreateBosss(ctx context.Context, base *mongo.Database) func(w http.Response
 		}
 		boss.Email = strings.ToLower(boss.Email)
 		boss.Role = "boss"
+		boss.CompanyName = "Adel"
 		boss.Verified = true
 		coll := base.Collection("bosses")
+		var ctx, _  = context.WithTimeout(context.Background(), 10 * time.Second)
 		_ , err = coll.InsertOne(ctx, boss)
 		if err != nil {
 			ErrorWithJSON(w, Message{"Database error"}, http.StatusInternalServerError)
 			log.Println("Failed create boss: ", err)
 			return
 		}
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
+		//w.Header().Set("Content-Type", "application/json")
+		//w.WriteHeader(http.StatusOK)
 		m := Message{"Created Successfully"}
 		response, err := json.Marshal(m)
 		w.Write([]byte(response))
@@ -131,8 +148,12 @@ func CreateBosss(ctx context.Context, base *mongo.Database) func(w http.Response
 }
 
 //UpdateJunior updates a junior
-func UpdateJunior(ctx context.Context, base *mongo.Database) func(w http.ResponseWriter, r *http.Request) {
+func UpdateJunior(base *mongo.Database) func(w http.ResponseWriter, r *http.Request) {
 		return func(w http.ResponseWriter, r *http.Request) {
+		setupResponse(&w, r)
+		if (*r).Method == "OPTIONS" {
+			return
+		}
 		w.Header().Add("Content-Type", "application/json")
 		vars := mux.Vars(r)
 		idStr := vars["uid"]
@@ -146,6 +167,7 @@ func UpdateJunior(ctx context.Context, base *mongo.Database) func(w http.Respons
 		}
 		junior.Email = strings.ToLower(junior.Email)
 		coll := base.Collection("juniors")
+		var ctx, _  = context.WithTimeout(context.Background(), 10 * time.Second)
 		res, err := coll.UpdateOne(
 			ctx, 
 			bson.M{"_id": id},
@@ -159,8 +181,8 @@ func UpdateJunior(ctx context.Context, base *mongo.Database) func(w http.Respons
 				log.Println("Failed update junior: ", err)
 				return
 		}
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
+		//w.Header().Set("Content-Type", "application/json")
+		//w.WriteHeader(http.StatusOK)
 		log.Print(res)
 		jsonM, _ := json.Marshal("Upate done")
 		w.Write(jsonM)
@@ -169,8 +191,13 @@ func UpdateJunior(ctx context.Context, base *mongo.Database) func(w http.Respons
 	}
 
 //UpdateSenior updates a senior
-func UpdateSenior(ctx context.Context, base *mongo.Database) func(w http.ResponseWriter, r *http.Request) {
+func UpdateSenior(base *mongo.Database) func(w http.ResponseWriter, r *http.Request) {
 		return func (w http.ResponseWriter, r *http.Request) {
+		setupResponse(&w, r)
+		if (*r).Method == "OPTIONS" {
+			return
+		}
+		w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.Header().Add("Content-Type", "application/json")
 		vars := mux.Vars(r)
 		idStr := vars["uid"]
@@ -183,6 +210,7 @@ func UpdateSenior(ctx context.Context, base *mongo.Database) func(w http.Respons
 		}
 		senior.Email = strings.ToLower(senior.Email)
 		coll := base.Collection("seniors")
+		var ctx, _  = context.WithTimeout(context.Background(), 10 * time.Second)
 		res, err := coll.UpdateOne(
 			ctx, 
 			bson.M{"_id": id},
@@ -196,19 +224,24 @@ func UpdateSenior(ctx context.Context, base *mongo.Database) func(w http.Respons
 				log.Println("Failed update senior: ", err)
 				return
 		}
-		w.WriteHeader(http.StatusOK)
+		//w.WriteHeader(http.StatusOK)
 		
 		jsonM, _ := json.Marshal(res.ModifiedCount)
 		w.Write(jsonM)
 		}
 }
 
-func SendUnverifiedJuniors (ctx context.Context, base *mongo.Database) func(w http.ResponseWriter, r *http.Request) {
+func SendUnverifiedJuniors (base *mongo.Database) func(w http.ResponseWriter, r *http.Request) {
 	return func (w http.ResponseWriter, r *http.Request) {
+		setupResponse(&w, r)
+		if (*r).Method == "OPTIONS" {
+			return
+		}
 		w.Header().Add("Content-Type", "application/json")
 		coll := base.Collection("juniors")
 		opt := options.Find()
 		opt.SetSort(bson.D{{"time_regd", -1}})
+		var ctx, _  = context.WithTimeout(context.Background(), 10 * time.Second)
 		filter := bson.D{{"verified", bson.D{{"$eq", false}}}}
 		jFilterCursor, err := coll.Find(ctx, filter, opt)
 		juniors := []data.Junior {}
@@ -239,12 +272,17 @@ func SendUnverifiedJuniors (ctx context.Context, base *mongo.Database) func(w ht
 	
 	}	
 
-func SendUnverifiedSeniors(ctx context.Context, base *mongo.Database) func(w http.ResponseWriter, r *http.Request) {
+func SendUnverifiedSeniors(base *mongo.Database) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
+		setupResponse(&w, r)
+		if (*r).Method == "OPTIONS" {
+			return
+		}
 		coll2 := base.Collection("seniors")
 		filter := bson.D{{"verified", bson.D{{"$eq", false}}}}
 		opt := options.Find()
 		opt.SetSort(bson.D{{"time_regd", -1}})
+		var ctx, _  = context.WithTimeout(context.Background(), 10 * time.Second)
 		sFilterCursor, err := coll2.Find(ctx, filter, opt)
 		if err != nil {
 			ErrorWithJSON(w, Message{"Database error"}, http.StatusInternalServerError)
@@ -270,8 +308,12 @@ func SendUnverifiedSeniors(ctx context.Context, base *mongo.Database) func(w htt
 	}
 }
 
-func VerifyManyJuniors (ctx context.Context, base *mongo.Database) func(w http.ResponseWriter, r *http.Request) {
+func VerifyManyJuniors (base *mongo.Database) func(w http.ResponseWriter, r *http.Request) {
 	return func (w http.ResponseWriter, r *http.Request) {
+		setupResponse(&w, r)
+		if (*r).Method == "OPTIONS" {
+			return
+		}
 		w.Header().Add("Content-Type", "application/json")
 		var all []string
 		if err := json.NewDecoder(r.Body).Decode(&all); err != nil {
@@ -279,6 +321,7 @@ func VerifyManyJuniors (ctx context.Context, base *mongo.Database) func(w http.R
 			return
 		}
 		jColl := base.Collection("juniors")
+		var ctx, _  = context.WithTimeout(context.Background(), 10 * time.Second)
 		
 		for _,j := range all {
 			id, _ := primitive.ObjectIDFromHex(j)
@@ -290,15 +333,19 @@ func VerifyManyJuniors (ctx context.Context, base *mongo.Database) func(w http.R
 			}
 		}
 
-		w.WriteHeader(http.StatusOK)
+		//w.WriteHeader(http.StatusOK)
 		ret := Message{"All Verified"}
 		returned, _ := json.Marshal(ret)
 		w.Write(returned)
 	}
 }
 
-func VerifyManySeniors (ctx context.Context, base *mongo.Database) func(w http.ResponseWriter, r *http.Request) {
+func VerifyManySeniors (base *mongo.Database) func(w http.ResponseWriter, r *http.Request) {
 	return func (w http.ResponseWriter, r *http.Request) {
+		setupResponse(&w, r)
+		if (*r).Method == "OPTIONS" {
+			return
+		}
 		w.Header().Add("Content-Type", "application/json")
 		var all []string
 		if err := json.NewDecoder(r.Body).Decode(&all); err != nil {
@@ -307,6 +354,7 @@ func VerifyManySeniors (ctx context.Context, base *mongo.Database) func(w http.R
 		}
 		sColl := base.Collection("seniors")
 		log.Printf("we got here")
+		var ctx, _  = context.WithTimeout(context.Background(), 10 * time.Second)
 		for _,j := range all {
 			id, _ := primitive.ObjectIDFromHex(j)
 			_, err := sColl.UpdateOne(ctx, bson.M{"_id": id}, bson.D{{"$set", bson.M{"verified": true}}})
@@ -315,7 +363,7 @@ func VerifyManySeniors (ctx context.Context, base *mongo.Database) func(w http.R
 				return
 			}
 		}
-		w.WriteHeader(http.StatusOK)
+		//w.WriteHeader(http.StatusOK)
 		ret := Message{"All Verified"}
 		returned, _ := json.Marshal(ret)
 		w.Write(returned)
