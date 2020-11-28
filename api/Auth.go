@@ -207,7 +207,7 @@ func AuthorizeWareSenior(w http.ResponseWriter, r *http.Request,  next http.Hand
 			}
 			return Signature, nil
 		})
-		checkClaim, _ := token.Claims.(jwt.MapClaims)
+		// checkClaim, _ := token.Claims.(jwt.MapClaims)
 		if err == nil {
 			if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid && (claims["role"] == "senior" || claims["role"] == "boss") {
 				next(w, r)

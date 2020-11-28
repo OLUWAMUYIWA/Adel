@@ -19,7 +19,7 @@ import (
 var sec = os.Getenv("secret")
 
 // var Signature = []byte(sec)
-// var sec = 984fv873rfnvfo9u34rb34340b5geor08343otf89wfbw4893
+// var sec = "984fv873rfnvfo9u34rb34340b5geor08343otf89wfbw4893"
 var mySigningKey = []byte(sec)
 
 
