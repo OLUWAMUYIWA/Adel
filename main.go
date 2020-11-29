@@ -1,12 +1,17 @@
 package main
+
 import (
 	"context"
+	"fmt"
 	"log"
 	"net/http"
-	"time"
 	"os"
+	// "strings"
+	"time"
+
 	"github.com/OLUWAMUYIWA/Adel/api"
 	"github.com/codegangsta/negroni"
+
 	//"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"go.mongodb.org/mongo-driver/bson"
@@ -205,9 +210,27 @@ func main() {
 	fs := http.FileServer(http.Dir("./clientdist"))
 	r.Handle("/", fs)
 
-	// http.ListenAndServe(":3000", r)
-	port := os.Getenv("port")
-	http.ListenAndServe(":"+port, r)
-	//http.ListenAndServe(":3000", handlers.CORS(handlers.AllowedMethods([]string{"GET", "POST", "PUT", "HEAD", "OPTIONS"}), handlers.AllowedOrigins([]string{"*"}))(r))
+	// for _, encodedRoute := range strings.Split(os.Getenv("ROUTES"), ",") {
+	// 	if encodedRoute == "" {
+	// 		continue
+	// 	}
+	// 	pathAndBody := strings.SplitN(encodedRoute, "=", 2)
+	// 	path, body := pathAndBody[0], pathAndBody[1]
+	// 	http.HandleFunc("/"+path, func(w http.ResponseWriter, r *http.Request) {
+	// 		fmt.Fprint(w, body)
+	// 	})
+	// }
 
+	// http.ListenAndServe(":3000", r)
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "80"
+	}
+	// http.ListenAndServe(":"+port, r)
+
+	err = http.ListenAndServe(fmt.Sprintf(":%s", port), r)
+	if err != nil {
+		panic(err)
+	}
+	
 }
