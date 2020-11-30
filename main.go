@@ -48,12 +48,6 @@ func main() {
 	}
 	defer client.Disconnect(ctx)
 	dBase := client.Database("drugstore")
-	// var Conn Connection = Connection {
-	// 	Seniors: dBase.Collection("seniors"),
-	// 	Juniors: dBase.Collection("juniors"),
-	// 	Drugs: dBase.Collection("drugs"),
-
-	// }
 
 	drugsColl := dBase.Collection("drugs")
 	
@@ -110,7 +104,6 @@ func main() {
 	r := mux.NewRouter().StrictSlash(false)
 	
 	s := r.PathPrefix("/api").Subrouter()
-	//r.Host("www.example.com")
 
 	noAuth := s.PathPrefix("/no_auth").Subrouter()
 	noAuth.Path("/regJunior").HandlerFunc(api.CreateJunior( dBase)).Methods("POST", "OPTIONS")
@@ -210,16 +203,11 @@ func main() {
 	fs := http.FileServer(http.Dir("./clientdist"))
 	r.Handle("/", fs)
 
-	// for _, encodedRoute := range strings.Split(os.Getenv("ROUTES"), ",") {
-	// 	if encodedRoute == "" {
-	// 		continue
-	// 	}
-	// 	pathAndBody := strings.SplitN(encodedRoute, "=", 2)
-	// 	path, body := pathAndBody[0], pathAndBody[1]
-	// 	http.HandleFunc("/"+path, func(w http.ResponseWriter, r *http.Request) {
-	// 		fmt.Fprint(w, body)
-	// 	})
-	// }
+
+	s.HandleFunc("/servestatic/check", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("we came here to conquer"))
+	})
+
 
 	// http.ListenAndServe(":3000", r)
 	port := os.Getenv("PORT")
@@ -234,3 +222,4 @@ func main() {
 	}
 	
 }
+
