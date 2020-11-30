@@ -203,8 +203,8 @@ func main() {
 	s.HandleFunc("/servestatic/check", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("we came here to conquer"))
 	})
-
-	clientApp := http.Dir("./clientdist/index.html")
+// index.html
+	clientApp := http.Dir("./clientdist/")
 	catchAll := "/"
 	fs := http.FileServer(clientApp)
 	r.Handle(catchAll, http.StripPrefix(catchAll, fs) )
