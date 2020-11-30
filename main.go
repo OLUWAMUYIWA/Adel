@@ -204,7 +204,7 @@ func main() {
 		w.Write([]byte("we came here to conquer"))
 	})
 // index.html
-	clientApp := http.Dir("./clientdist/")
+	clientApp := http.Dir("./clientdist")
 	catchAll := "/"
 	fs := http.FileServer(clientApp)
 	r.Handle(catchAll, http.StripPrefix(catchAll, fs) )
