@@ -207,7 +207,7 @@ func main() {
 	clientApp := http.Dir("./clientdist/index.html")
 	catchAll := "/"
 	fs := http.FileServer(clientApp)
-	r.Handle(catchAll, fs)
+	r.Handle(catchAll, http.StripPrefix(catchAll, fs) )
 
 	// http.ListenAndServe(":3000", r)
 	port := os.Getenv("PORT")
