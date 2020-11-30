@@ -199,22 +199,21 @@ func main() {
 		negroni.NewLogger(),
 		negroni.Wrap(http.HandlerFunc(api.VerifyManySeniors(dBase))),
 	)).Methods("PUT", "OPTIONS")
-
-	fs := http.FileServer(http.Dir("./clientdist"))
-	r.Handle("/", fs)
-
-
+	
 	s.HandleFunc("/servestatic/check", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("we came here to conquer"))
 	})
 
+	clientApp := http.Dir("./clientdist/index.html")
+	catchAll := "/"
+	fs := http.FileServer(clientApp)
+	r.Handle(catchAll, fs)
 
 	// http.ListenAndServe(":3000", r)
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "80"
 	}
-	// http.ListenAndServe(":"+port, r)
 
 	err = http.ListenAndServe(fmt.Sprintf(":%s", port), r)
 	if err != nil {
