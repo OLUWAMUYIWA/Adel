@@ -6,13 +6,14 @@ import (
 	"log"
 	"net/http"
 	"os"
+
 	// "strings"
 	"time"
 
 	"github.com/OLUWAMUYIWA/Adel/api"
 	"github.com/codegangsta/negroni"
 
-	//"github.com/gorilla/handlers"
+	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -170,8 +171,6 @@ func main() {
 		negroni.Wrap(http.HandlerFunc(api.DeleteDrug(dBase))),
 	)).Methods("DELETE", "OPTIONS")
 
-	
-
 	s.Handle("/sendUnverifiedJuniors", negroni.New(
 		negroni.NewRecovery(),
 		negroni.HandlerFunc(api.AuthorizeWareBoss),
@@ -203,22 +202,28 @@ func main() {
 	s.HandleFunc("/servestatic/check", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("we came here to conquer"))
 	})
+
 // index.html
 	clientApp := http.Dir("./clientdist")
 	catchAll := "/"
 	fs := http.FileServer(clientApp)
 	r.Handle(catchAll, http.StripPrefix(catchAll, fs) )
 
-	// http.ListenAndServe(":3000", r)
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "80"
 	}
 
-	err = http.ListenAndServe(fmt.Sprintf(":%s", port), r)
-	if err != nil {
-		panic(err)
-	}
+	// err = http.ListenAndServe(fmt.Sprintf(":%s", port), r)
+	// if err != nil {
+	// 	panic(err)
+	// }
+	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%s", port), handlers.CORS(handlers.AllowedHeaders(
+		[]string{"X-Requested-With", "Content-Type", "Authorization"}), 
+		handlers.AllowedMethods([]string{"GET", "POST", "PUT", "HEAD", "OPTIONS"}), 
+		handlers.AllowedOrigins([]string{"*"}))(r),
+		),
+	)
 	
 }
 
