@@ -35,9 +35,10 @@ func main() {
 
 //	var connStr = os.Getenv("dbconn")
 	var ctx, _  = context.WithTimeout(context.Background(), 10 * time.Second)
-	 clientOptions := options.Client().ApplyURI("mongodb://127.0.0.1:27017")
-	// var connStr = "mongodb+srv://adel:l7hbnRiL7BEr1bck@drugs.u6k4q.mongodb.net/drugs?retryWrites=true&w=majority"
+	 
+	var connStr = "mongodb+srv://adel:l7hbnRiL7BEr1bck@drugs.u6k4q.mongodb.net/drugs?retryWrites=true&w=majority"
 	//clientOptions := options.Client().ApplyURI(connStr)
+	clientOptions := options.Client().ApplyURI(connStr)
 	
 	client, err := mongo.Connect(ctx, clientOptions)
     if err != nil {
