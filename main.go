@@ -33,11 +33,11 @@ var mySigningKey = []byte(sec)
 func main() {
 	// MongooDB connection
 
-	var connStr = os.Getenv("dbconn")
+//	var connStr = os.Getenv("dbconn")
 	var ctx, _  = context.WithTimeout(context.Background(), 10 * time.Second)
-	// clientOptions := options.Client().ApplyURI("mongodb://127.0.0.1:27017")
+	 clientOptions := options.Client().ApplyURI("mongodb://127.0.0.1:27017")
 	// var connStr = "mongodb+srv://adel:l7hbnRiL7BEr1bck@drugs.u6k4q.mongodb.net/drugs?retryWrites=true&w=majority"
-	clientOptions := options.Client().ApplyURI(connStr)
+	//clientOptions := options.Client().ApplyURI(connStr)
 	
 	client, err := mongo.Connect(ctx, clientOptions)
     if err != nil {
@@ -211,7 +211,7 @@ func main() {
 
 	port := os.Getenv("PORT")
 	if port == "" {
-		port = "80"
+		port = "8080"
 	}
 
 	// err = http.ListenAndServe(fmt.Sprintf(":%s", port), r)
