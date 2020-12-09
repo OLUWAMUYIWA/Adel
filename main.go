@@ -204,11 +204,11 @@ func main() {
 		w.Write([]byte("we came here to conquer"))
 	})
 
-// index.html
-	clientApp := http.Dir("./clientdist")
-	catchAll := "/"
-	fs := http.FileServer(clientApp)
-	r.Handle(catchAll, http.StripPrefix(catchAll, fs) )
+// // index.html
+// 	clientApp := http.Dir("./clientdist")
+// 	catchAll := "/"
+// 	fs := http.FileServer(clientApp)
+// 	r.Handle(catchAll, http.StripPrefix(catchAll, fs) )
 
 	port := os.Getenv("PORT")
 	if port == "" {
